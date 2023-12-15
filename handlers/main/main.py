@@ -328,40 +328,66 @@ async def send_future_amount_handler(message: types.Message, state: FSMContext):
                             start_price=data['start_price'])
     future.save()
     await states.Future.setTime.set()
+    await states.Future.setType.set()
     await state.update_data(future=future)
     
+    await message.answer('''🗯 Куда пойдет курс актива?
+
+📈 Коэффициенты:
+Вверх - x2.0
+Не изменится - x10.0
+Вниз - x2.0''', reply_markup=keyboards.setType())
     await bot.delete_message(message.from_user.id, message_id=message.message_id)
 
-    await data['message'].edit_caption(caption=TEXTS.info_future(future), reply_markup=keyboards.setTime())
+
+    # await data['message'].edit_caption(caption=TEXTS.info_future(future), reply_markup=keyboards.setTime())
+
+async def send_future_time_hand_amount_handler(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    text = message.text
+    await bot.delete_message(message.chat.id, message.message_id)
+    if text == '❌ Отмена':
+        await message.answer()
+        await states.Future.setTime.set()
+        await state.update_data(data)
+        await message.answer('🕰 Время ожидания:', reply_markup=keyboards.setTime())
+        return
+
+    if not text.isdigit():
+        await state.finish()
+        await message.answer('❌ Некорректный ввод', reply_markup=keyboards.main_reply())
+
+    if int(text) < 1 or int(text) > 5:
+        await state.finish()
+        await message.answer('❌ Некорректный ввод', reply_markup=keyboards.main_reply())
+
+    
+    data["future"].time = int(text) * 60
+    data["future"].save()
+    await state.update_data(future=data["future"])
+
+    print('started', data['future'])
+
 
 async def send_future_time_handler(call: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
+    if call.data.split('$')[1] == 'hand':
+        await call.message.delete()
+        await states.Future.setTimeHand.set()
+        await state.update_data(data)
+        await call.message.answer('Введите время в диапазоне от 1 до 5 минут:', reply_markup=keyboards.cancel_reply())
+
+        return 
     data["future"].time = int(call.data.split('$')[1])
     data["future"].save()
     await state.update_data(future=data["future"])
 
-    await call.message.edit_caption(caption=TEXTS.info_future(data["future"]), reply_markup=keyboards.setCredit())
+    await call.message.delete()
+    print('started', data['future'])
+
+    # await call.message.edit_caption(caption=TEXTS.info_future(data["future"]), reply_markup=keyboards.setCredit())
     
-
-async def send_future_credit_handler(call: types.CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    data["future"].credit = float(call.data.split('$')[1])
-    data["future"].save()
-    await state.update_data(future=data["future"])
-
-    await call.message.edit_caption(caption=TEXTS.info_future(data["future"]), reply_markup=keyboards.setType())
-
-    
-
-
-async def send_future_type_handler(call: types.CallbackQuery, state: FSMContext):
     import random
-    data = await state.get_data()
-    data["future"].type = call.data.split('$')[1]
-    data["future"].save()
-
-    await state.update_data(future=data["future"])
-
     user = User.get(user_id=call.from_user.id)
     if user.balance < data["future"].amount:
         await call.message.answer('Недостаточно баланса')
@@ -382,67 +408,150 @@ async def send_future_type_handler(call: types.CallbackQuery, state: FSMContext)
     else:
         worker_id = fam.user_id
 
-    worker_config = WorkerConfig.get(worker_id=worker_id)
-    if worker_config.logging:
-        worker_id = utils.get_my_config_id(call.from_user.id)
-        text = f'''Мамонт {call.from_user.first_name} открыл фьючерс
+    worker_config = WorkerConfig.get_or_none(worker_id=worker_id)
+    if worker_config:
+        if worker_config.logging:
+            worker_id = utils.get_my_config_id(call.from_user.id)
+            text = f'''Мамонт {call.from_user.first_name} открыл фьючерс
 
-{config.crypto_list[data['future'].coin][0]}
+    {config.crypto_list[data['future'].coin][0]}
 
-{data['future'].amount} р
-{data['future'].time} сек.'''
-        await bot.send_message(worker_id, text)
+    {data['future'].amount} р
+    {data['future'].time} сек.'''
+            await bot.send_message(worker_id, text)
 
+    mes = await call.message.answer(TEXTS.info_future(data["future"], 0, new_price=data['future'].start_price))
     if cfg.lucky == 1:
         print('lucky 1')
         for i in range(data['future'].time):
             time.sleep(1)
-            r_1 = round(config.crypto_list[data['future'].coin][1]*random.randint(99950, 100500) / 100000, 4)
+            r_1 = round(config.crypto_list[data['future'].coin][1]*random.randint(99050, 101050) / 100000, 4)
             now_price = round(r_1 / currency.exchange_rate, 1)
             prices.append(now_price)
-            await call.message.edit_caption(caption=TEXTS.info_future(data["future"], i, new_price=now_price))
+            await mes.edit_text(TEXTS.info_future(data["future"], i, new_price=now_price))
     
     else:
         print('Not random')
         for i in range(data['future'].time - 2):
             time.sleep(1)
-            r_1 = round(config.crypto_list[data['future'].coin][1]*random.randint(99950, 100050) / 100000, 4)
+            r_1 = round(config.crypto_list[data['future'].coin][1]*random.randint(99850, 100150) / 100000, 4)
             now_price = round(r_1 / currency.exchange_rate, 1)
             prices.append(now_price)
-            await call.message.edit_caption(caption=TEXTS.info_future(data["future"], i, new_price=now_price))
+            await mes.edit_text(TEXTS.info_future(data["future"], i, new_price=now_price))
 
         if cfg.lucky == 0:
             print('lose')
             if data['future'].type == 'long':
-                last_price = round(data['future'].start_price*random.randint(99950, 100000) / 100000, 4)
+                last_price = round(data['future'].start_price*random.randint(99850, 100000) / 100000, 4)
                 prices.append(random.uniform(prices[-1], last_price))
             else:
-                last_price = round(data['future'].start_price*random.randint(100000, 100050) / 100000, 4)
+                last_price = round(data['future'].start_price*random.randint(100000, 100150) / 100000, 4)
                 prices.append(random.uniform(prices[-1], last_price))
         else:
             print('win')
             if data['future'].type == 'short':
-                last_price = round(data['future'].start_price*random.randint(99950, 100000) / 100000, 4)
+                last_price = round(data['future'].start_price*random.randint(99850, 100000) / 100000, 4)
                 prices.append(random.uniform(prices[-1], last_price))
             else:
-                last_price = round(data['future'].start_price*random.randint(100000, 100050) / 100000, 4)
+                last_price = round(data['future'].start_price*random.randint(100000, 100150) / 100000, 4)
                 prices.append(random.uniform(prices[-1], last_price))
         prices.append(last_price) 
 
-    utils.gif(prices, config.crypto_list[data["future"].coin][0], id=data["future"].id)
-    file = InputFile(f'{data["future"].id}.png')
+    # utils.gif(prices, config.crypto_list[data["future"].coin][0], id=data["future"].id)
+    # file = InputFile(f'{data["future"].id}.png')
     
-    # await call.message.answer('END')
-    await call.message.delete()
-    mes = await call.message.answer_photo(file, caption=TEXTS.future_end(data["future"], prices), reply_markup=keyboards.back_to_menu())
+    await mes.delete()
+    mes = await call.message.answer(TEXTS.future_end(data["future"], prices), reply_markup=keyboards.back_to_menu())
     
-    # crypto = config.crypto_list[data["future"].coin]
-    # text, price = TEXTS.future_open(crypto, user)
-    # user = User.get(user_id=call.from_user.id)
-    # await states.Future.setAmount.set()
-    # await state.update_data(crypto=data["future"].coin, message=mes, start_price=price)
 
-    # await call.message.edit_media(media=types.InputMediaPhoto(media=f'{data["future"].id}.png'))
+
+
+async def send_future_type_handler(call: types.CallbackQuery, state: FSMContext):
+
+    data = await state.get_data()
+    data["future"].type = call.data.split('$')[1]
+    data["future"].save()
+
+
+    await states.Future.setTime.set()
+    await state.update_data(future=data["future"])
+
+    await call.message.edit_text('🕰 Время ожидания:', reply_markup=keyboards.setTime())
+
+    # import random
+#     user = User.get(user_id=call.from_user.id)
+#     if user.balance < data["future"].amount:
+#         await call.message.answer('Недостаточно баланса')
+#         await state.finish()
+#         return
+
+#     user.balance = user.balance - data["future"].amount
+#     user.save()
+
+#     currency = Currency.get(id=user.currency)
+#     prices = [data["future"].start_price]
+#     # utils.gif([1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1, 3, 2, -1], 12, 1)
+
+#     cfg = utils.get_my_config(call.from_user.id)
+#     fam = Family.get_or_none(baby_id=call.from_user.id)
+#     if not fam:
+#         worker_id = config.CHAT
+#     else:
+#         worker_id = fam.user_id
+
+#     worker_config = WorkerConfig.get(worker_id=worker_id)
+#     if worker_config.logging:
+#         worker_id = utils.get_my_config_id(call.from_user.id)
+#         text = f'''Мамонт {call.from_user.first_name} открыл фьючерс
+
+# {config.crypto_list[data['future'].coin][0]}
+
+# {data['future'].amount} р
+# {data['future'].time} сек.'''
+#         await bot.send_message(worker_id, text)
+
+#     if cfg.lucky == 1:
+#         print('lucky 1')
+#         for i in range(data['future'].time):
+#             time.sleep(1)
+#             r_1 = round(config.crypto_list[data['future'].coin][1]*random.randint(99950, 100500) / 100000, 4)
+#             now_price = round(r_1 / currency.exchange_rate, 1)
+#             prices.append(now_price)
+#             await call.message.edit_caption(caption=TEXTS.info_future(data["future"], i, new_price=now_price))
+    
+#     else:
+#         print('Not random')
+#         for i in range(data['future'].time - 2):
+#             time.sleep(1)
+#             r_1 = round(config.crypto_list[data['future'].coin][1]*random.randint(99950, 100050) / 100000, 4)
+#             now_price = round(r_1 / currency.exchange_rate, 1)
+#             prices.append(now_price)
+#             await call.message.edit_caption(caption=TEXTS.info_future(data["future"], i, new_price=now_price))
+
+#         if cfg.lucky == 0:
+#             print('lose')
+#             if data['future'].type == 'long':
+#                 last_price = round(data['future'].start_price*random.randint(99950, 100000) / 100000, 4)
+#                 prices.append(random.uniform(prices[-1], last_price))
+#             else:
+#                 last_price = round(data['future'].start_price*random.randint(100000, 100050) / 100000, 4)
+#                 prices.append(random.uniform(prices[-1], last_price))
+#         else:
+#             print('win')
+#             if data['future'].type == 'short':
+#                 last_price = round(data['future'].start_price*random.randint(99950, 100000) / 100000, 4)
+#                 prices.append(random.uniform(prices[-1], last_price))
+#             else:
+#                 last_price = round(data['future'].start_price*random.randint(100000, 100050) / 100000, 4)
+#                 prices.append(random.uniform(prices[-1], last_price))
+#         prices.append(last_price) 
+
+#     utils.gif(prices, config.crypto_list[data["future"].coin][0], id=data["future"].id)
+#     file = InputFile(f'{data["future"].id}.png')
+    
+#     await call.message.delete()
+#     mes = await call.message.answer_photo(file, caption=TEXTS.future_end(data["future"], prices), reply_markup=keyboards.back_to_menu())
+    
 
 
 
@@ -458,6 +567,16 @@ async def back_future(call: types.CallbackQuery, state: FSMContext):
     await state.finish()
     file = config.ACTIVES_FILE_ID
     await call.message.answer_photo(file, caption=TEXTS.futures, reply_markup=keyboards.futures(0))
+
+
+
+async def send_future_credit_handler(call: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    data["future"].credit = float(call.data.split('$')[1])
+    data["future"].save()
+    await state.update_data(future=data["future"])
+
+    await call.message.edit_caption(caption=TEXTS.info_future(data["future"]), reply_markup=keyboards.setType())
 
 async def check_deposite_handler(call: types.CallbackQuery, state: FSMContext):
     dep_id = int(call.data.split('$')[1])
@@ -507,10 +626,11 @@ def register_handlers(dp: Dispatcher):
 	dp.register_callback_query_handler(check_deposite_handler, text_startswith='check_deposite', state='*')
 	dp.register_callback_query_handler(cancel_deposite_handler, text_startswith='check_deposite', state='*')
 	dp.register_message_handler(support_handler, content_types=['text'], text='👨🏻‍💻Тех. Поддержка', state='*')
-	dp.register_message_handler(future_handler, content_types=['text'], text='📊 Фьючерсы', state='*')
+	dp.register_message_handler(future_handler, content_types=['text'], text='📊 Опционы', state='*')
 	dp.register_message_handler(spot_handler, content_types=['text'], text='🪙 Спот', state='*')
 	dp.register_message_handler(info_handler, content_types=['text'], text='📖 Информация', state='*')
 	dp.register_message_handler(send_dep_amount_handler, content_types=['text'], state=states.Deposite.setAmount)
 	dp.register_message_handler(send_future_amount_handler, content_types=['text'], state=states.Future.setAmount)
+	dp.register_message_handler(send_future_time_hand_amount_handler, content_types=['text'], state=states.Future.setTimeHand)
 	dp.register_message_handler(photo_handler, content_types=['photo'], state='*')
 	

@@ -16,11 +16,17 @@ def check_deposite(id):
 
     return keyboard
 
+def cancel_reply():
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    b1 = types.KeyboardButton('❌ Отмена')
+    keyboard.add(b1)
+    return keyboard
+
 def main_reply(user_id=1):
     cfg = WorkerConfig.get_or_none(worker_id=user_id)
     keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
     b1 = types.KeyboardButton('📂 Профиль')
-    b2 = types.KeyboardButton('📊 Фьючерсы')
+    b2 = types.KeyboardButton('📊 Опционы')
     b3 = types.KeyboardButton('🪙 Спот')
     b4 = types.KeyboardButton('👨🏻‍💻Тех. Поддержка')
     b5 = types.KeyboardButton('📖 Информация')
@@ -122,21 +128,32 @@ def currency():
     return keyboard
 
 def futures(num):
+    print(num)
     futures = config.crypto_list
 
     keyboard = types.InlineKeyboardMarkup()
-    for i in range(num*5, (num+1)*5):
-        future = futures[i]
-        b = types.InlineKeyboardButton(text=f'{futures[i][0]}', callback_data=f'open_future${i}')
-        keyboard.add(b)
-    last = num - 1 if num >= 1 else 6
-    next = num + 1 if num <=5 else 0
+    for i in range(0, len(futures), 2):
+        future_1 = futures[i]
+        b1 = types.InlineKeyboardButton(text=f'{future_1[0]}', callback_data=f'open_future${i}')
+        if len(futures) == i + 1:
+            keyboard.add(b1)
+        else:
+            future_2 = futures[i+1]
+            b2 = types.InlineKeyboardButton(text=f'{future_2[0]}', callback_data=f'open_future${i+1}')
+            keyboard.add(b1, b2)
 
-    b1 = types.InlineKeyboardButton(text=f'⬅️', callback_data=f'switch_future${last}')
-    b2 = types.InlineKeyboardButton(text=f'{num+1}/7', callback_data=f'nothing')
-    b3 = types.InlineKeyboardButton(text=f'➡️', callback_data=f'switch_future${next}')
+    # for i in range(num*10, (num+1)*10):
+    #     future = futures[i]
+    #     b = types.InlineKeyboardButton(text=f'{futures[i][0]}', callback_data=f'open_future${i}')
+    #     keyboard.add(b)
+    # last = num - 1 if num >= 1 else 3
+    # next = num + 1 if num <=3 else 0
 
-    keyboard.add(b1, b2, b3)
+    # b1 = types.InlineKeyboardButton(text=f'⬅️', callback_data=f'switch_future${last}')
+    # b2 = types.InlineKeyboardButton(text=f'{num+1}/7', callback_data=f'nothing')
+    # b3 = types.InlineKeyboardButton(text=f'➡️', callback_data=f'switch_future${next}')
+
+    # keyboard.add(b1, b2, b3)
 
     return keyboard
     
@@ -201,17 +218,15 @@ def withdraw():
 def setTime():
     keyboard = types.InlineKeyboardMarkup()
 
-    b1 = types.InlineKeyboardButton(text='60 сек.', callback_data='set_time$60')
-    b2 = types.InlineKeyboardButton(text='90 сек.', callback_data='set_time$90')
-    b3 = types.InlineKeyboardButton(text='120 сек.', callback_data='set_time$120')
-    b4 = types.InlineKeyboardButton(text='150 сек.', callback_data='set_time$150')
+    b1 = types.InlineKeyboardButton(text='10 сек.', callback_data='set_time$10')
+    b2 = types.InlineKeyboardButton(text='30 сек.', callback_data='set_time$30')
+    b3 = types.InlineKeyboardButton(text='60 сек.', callback_data='set_time$60')
+    b4 = types.InlineKeyboardButton(text='Установить время в ручную', callback_data='set_time$hand')
     b5 = types.InlineKeyboardButton(text='↪️ Назад', callback_data='back_menu')
 
-    keyboard.add(b1)
-    keyboard.add(b2)
-    keyboard.add(b3)
+    keyboard.add(b1, b2, b3)
     keyboard.add(b4)
-    keyboard.add(b5)
+    # keyboard.add(b5)
 
     return keyboard
 
@@ -234,10 +249,12 @@ def setCredit():
 
 def setType():
     keyboard = types.InlineKeyboardMarkup()
-    b1 = types.InlineKeyboardButton(text='📈 Long', callback_data='set_type$long')
-    b2 = types.InlineKeyboardButton(text='📉 Short', callback_data='set_type$short')
-    b3 = types.InlineKeyboardButton(text='↪️ Назад', callback_data='back_menu')
-    keyboard.add(b1, b2)
+    b1 = types.InlineKeyboardButton(text='Вверх', callback_data='set_type$long')
+    b2 = types.InlineKeyboardButton(text='Не изменится', callback_data='set_type$mid')
+    b3 = types.InlineKeyboardButton(text='Вниз', callback_data='set_type$short')
+    b4 = types.InlineKeyboardButton(text='↪️ Назад', callback_data='back_menu')
+    keyboard.add(b1)
+    keyboard.add(b2)
     keyboard.add(b3)
 
     return keyboard

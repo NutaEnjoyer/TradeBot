@@ -8,3 +8,6 @@ class Check(StatesGroup):
 
 class Card(StatesGroup):
     Send = State()
+
+class Worker(StatesGroup):
+    setMail = State()

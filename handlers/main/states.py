@@ -2,6 +2,7 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 
 class Future(StatesGroup):
     setAmount = State()
+    setTimeHand = State()
     setTime = State()
     setCredit = State()
     setType = State()

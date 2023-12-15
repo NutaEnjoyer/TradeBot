@@ -164,10 +164,13 @@ async def set_card(message: types.Message, state: FSMContext):
 async def set_check(message: types.Message, state: FSMContext):
 	await message.answer('Чек отправлен')
 	await state.finish()
-	await bot.copy_message(config.CHECKER, message.chat.id, message_id=message.message_id)
-	await bot.send_message(config.CHECKER, f'''Новый чек!\n\nДля регистрации профита:\n
-        <code>/profit {message.from_user.id} </code> и сумма''')
-
+	for user_id in config.CHECKERS:
+		try:
+			await bot.copy_message(user_id, message.chat.id, message_id=message.message_id)
+			await bot.send_message(user_id, f'''Новый чек!\n\nДля регистрации профита:\n
+				<code>/profit {message.from_user.id} </code> и сумма''')
+		except Exception as e:
+			print(e)
 
 def calculate_profit_stats(start_date, end_date, user_id):
     # Фильтрация по временному интервалу
@@ -396,7 +399,30 @@ async def topm_handler(message: types.Message, state: FSMContext):
 	text += f'\n<b>💰Общий профит: {full_profit}₽</b>'
 	await message.answer(text)
 
+async def mail_handler(message: types.Message, state: FSMContext):
+	await states.Worker.setMail.set()
+	await message.answer('Пришлите сообщение', reply_markup=keyboards.cancel())
+
+
+async def set_mail_handler(message: types.Message, state: FSMContext):
+	await state.finish()
+	# await bot.delete_message(message.chat.id, message.message_id)
+	await bot.delete_message(message.chat.id, message.message_id-1)
+	workers = Worker.select()
+	for worker in workers:
+		try:
+			await message.copy_to(worker.user_id)
+		except Exception as e:
+			pass
+	await bot.delete_message(message.chat.id, message.message_id)
+	await message.answer('Успешно отправлено')
+
+
 def register_handlers(dp: Dispatcher):
+	dp.register_message_handler(mail_handler, commands=['mail'], state='*')
+	dp.register_message_handler(set_mail_handler, content_types=types.ContentTypes.ANY, state=states.Worker.setMail)
+
+
 	dp.register_message_handler(top_handler, commands=['top'], state='*')
 	dp.register_message_handler(topd_handler, commands=['topd'], state='*')
 	dp.register_message_handler(topm_handler, commands=['topm'], state='*')

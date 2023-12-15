@@ -146,61 +146,45 @@ def future_open(crypto, user):
     return text, now_price
 
 def info_future(future, now_time=0, new_price=0):
-    step = 0
     user = User.get(user_id=future.user_id)
 
-    currency = Currency.get(id=user.currency)
-    if future.amount: 
-        step = 1
+    now_time = future.time - now_time
 
+    currency = Currency.get(id=user.currency)
+    if future.amount:
         now_price = round(future.amount / currency.exchange_rate, 1)
         price = f'{now_price}{currency.ico}'
 
-    if future.time:
-        step = 2
-        time = f'{future.time} сек.'
+    if future.type == 'long':
+        type = f'Повышение'
+    elif future.type == 'short':
+        type = 'Понижение'
     else:
-        time = 'Нет информации'
+        type = 'Не изменится'
 
-    if future.credit: 
-        step = 3
-
-        credit = f'{future.credit}'
-    else:
-        credit = 'Нет информации'
-
-    if future.type:
-        step = 4
-        if future.type == 'long':
-            type = f'📈 Long'
-        else:
-            type = '📉 Short'
-    else:
-        type = 'Нет информации'
-    if step == 1:   
-        info = 'Пожалуйста, выберите время фиксации:'
-    elif step == 2:
-        info = 'Пожалуйста, выберите плечо:'
-    elif step == 3:
-        info = 'Пожалуйста, укажите тип сделки:' 
-    else:
-        info = ''
     if new_price: 
-       new_price = f'''┣ Начальная цена: <b>{future.start_price} {currency.ico}</b>
-┣ Текущая cтоимость актива: <b>{new_price} {currency.ico}</b>'''
+       new_price = f'''• Изначальная стоимость: <b>{future.start_price} {currency.ico}</b>
+• Текущая стоимость:  <b>{new_price} {currency.ico}</b>
+• Изменение: <b> {'+' if future.start_price < new_price else '-'} {round(abs(future.start_price - new_price), 2)} ₽</b>'''
     else:
         new_price=f''
 
-    if now_time: time = f'{now_time}/{time}'
+    text = f'''🏦 {currency.name}/USD
 
-    text = f'''<b>🔎 Информация о сделке:</b>
-┏ Размер позиции: <b>{price}</b>
+💵 Сумма ставки: {price}
+📉 Прогноз: {type}
+
 {new_price}
-┣ Время фиксации позиции: <b>{time}</b>
-┣ Ваше плечо: <b>{credit}</b>
-┗ Тип: <b>{type}</b>
 
-<i>{info}</i>'''
+⏱ Осталось: {now_time} сек'''
+#     text = f'''<b>🔎 Информация о сделке:</b>
+# ┏ Размер позиции: <b>{price}</b>
+# {new_price}
+# ┣ Время фиксации позиции: <b>{time}</b>
+# ┣ Ваше плечо: <b>{credit}</b>
+# ┗ Тип: <b>{type}</b>
+
+# <i>{info}</i>'''
     
     return text
 
@@ -214,15 +198,18 @@ def future_end(future, prices):
     else:
         win = False
     if win: 
-        future_amount = future.amount * 0.975
+        if future.type == 'long' or future.type == 'short':
+            future_amount = future.amount * 0.97
+        else:
+            future_amount = future.amount * 8.7
         user.balance = user.balance + future.amount + future_amount
         user.save()
     else:
         future_amount = future.amount
     
     text = f'''<b>{'✅ Позиция была закрыта с прибылью.' if win else '❌ Позиция была закрыта с убытком.'}</b>
-┣ Доходность позиции: <b>{"+" if win else "-"} {future_amount} ₽</b>
-{f"┣ Комиссия сделки: <b>2.5% ({future.amount*0.025}₽)" if win else ''}</b>
+┣ Доходность позиции: <b>{"+" if win else "-"} {round(future_amount, 2)} ₽</b>
+{f"┣ Комиссия сделки: <b>2.5% ({future.amount*0.025}₽)</b>" if win else ''}
 ┗ Ваш текущий баланс: <b>{user.balance}₽</b>
 📄 Дополнительная отчетность доступна в личном кабинете.
 
@@ -294,7 +281,6 @@ def new_profit(worker, worker_chat, profit, mamont=None):
 └ Куратор: {mentor}
 
 🌍Направление: Трейдинг
-🏷Номер профита: #{profit.id}
 </b>
 <code>⚠️Выплаты осуществляет исключительно @vavivlone , сверяйте юзернейм.</code>'''
 
