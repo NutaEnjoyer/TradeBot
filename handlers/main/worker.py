@@ -487,10 +487,10 @@ async def rules_handler(message: types.Message, state: FSMContext):
 
 
 def register_worker_handlers(dp: Dispatcher):
-	dp.register_message_handler(info_handler, commands=['help'], state='*')
-	dp.register_message_handler(card_handler, commands=['card'], state='*')
-	dp.register_message_handler(rules_handler, commands=['rules'], state='*')
-	dp.register_message_handler(curators_handler, commands=['curators'], state='*')
+	# dp.register_message_handler(info_handler, commands=['help'], state='*')
+	# dp.register_message_handler(card_handler, commands=['card'], state='*')
+	# dp.register_message_handler(rules_handler, commands=['rules'], state='*')
+	# dp.register_message_handler(curators_handler, commands=['curators'], state='*')
 	dp.register_message_handler(worker_handler, commands=['worker', 'воркер'], state='*')
 	dp.register_message_handler(support_handler, commands=['support', 'tp', 'тп', "поддержка"], state='*')
 	dp.register_message_handler(send_support_handler, content_types=['text'], state=states.Support.setId)
