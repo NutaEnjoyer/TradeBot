@@ -92,7 +92,7 @@ def setting():
     b3 = types.InlineKeyboardButton(text='🪪 Верификация', callback_data='verificate')
     b4 = types.InlineKeyboardButton(text='↪️ Назад', callback_data='back_menu')
 
-    keyboard.add(b1, b2)
+    keyboard.add(b2)
     keyboard.add(b3)
     keyboard.add(b4)
 
