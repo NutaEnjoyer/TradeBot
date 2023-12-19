@@ -209,7 +209,7 @@ Telegram ID: {message.from_user.id}
 <b>{full[0]}</b> профитов на сумму: <b>{full[1]}₽</b>
 
 Чистый профит: <b>{round(full[1] * 0.8)}₽</b>
-Средний профит: <b>{round(full[1] / full[0])}₽</b>
+Средний профит: <b>{round((full[1] / full[0]) if full[0] else 0)}₽</b>
 В команде: {dates} дня, 0 варнов'''
 # 	text = f'''<b>Профиты {message.from_user.first_name}:
 
